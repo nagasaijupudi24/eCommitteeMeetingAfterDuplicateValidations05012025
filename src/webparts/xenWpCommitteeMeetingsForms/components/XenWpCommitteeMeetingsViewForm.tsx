@@ -24,9 +24,10 @@ import {
   Spinner,
   SpinnerSize,
   TextField,
-  Toggle,
+  // Toggle,
 } from "@fluentui/react";
 import { RichText } from "@pnp/spfx-controls-react/lib/controls/richText";
+import { format } from "date-fns";
 import PasscodeModal from "./passCode/passCode";
 
 interface CommtteeMeetingsState {
@@ -40,6 +41,7 @@ interface CommtteeMeetingsState {
   ConsolidatedPDFPath: string;
   CommitteeName: string;
   Chairman: any;
+  chairmanObjectAfterFilter:any;
   CommitteeMeetingGuestMembersDTO: any;
   CommitteeMeetingMembersDTO: any;
   CommitteeMeetingNoteDTO: any;
@@ -166,6 +168,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
       ConsolidatedPDFPath: "",
       CommitteeName: "",
       Chairman: null,
+      chairmanObjectAfterFilter:[],
       CommitteeMeetingGuestMembersDTO: [],
       CommitteeMeetingMembersDTO: [],
       CommitteeMeetingNoteDTO: [],
@@ -296,9 +299,18 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
   private _filterChairmanDataFromCommitteeMembersDTO = (data:any):any=>{
     const committeeMemberDTOFromList = JSON.parse(data)
+
+    committeeMemberDTOFromList.filter((each:any)=>{
+      if (each.isChairman === true){
+        console.log(each)
+        this.setState({chairmanObjectAfterFilter:each})
+      }
+    })
     const committeeMemberDTOWithOutChairmansData = committeeMemberDTOFromList.filter((each:any)=>each.isChairman === false)
   
     return committeeMemberDTOWithOutChairmansData
+
+
 
   }
 
@@ -497,16 +509,15 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
 
   private isReturnChecked = (
-    event: React.MouseEvent<HTMLElement>,
+    event: React.ChangeEvent<HTMLInputElement>,
     checked?: boolean
   ) => {
-    if (checked) {
-      this.setState({
-        isRturn: true,isApproverBtn:false
-      });
-    } else {
-      this.setState({ isRturn: false,isApproverBtn:true });
-    }
+    const isChecked = event.target.checked;
+
+  this.setState({
+    isRturn: isChecked,  // Updates isRturn based on checkbox state
+    isApproverBtn: !isChecked  // If isRturn is true, hide the Approver button, else show it
+  });
   };
 
   private columnsCommitteeGuestMembers: IColumn[] = [
@@ -661,6 +672,12 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     },
   ];
 
+  private _formatDateTime = (date: string | number | Date) => {
+    const formattedDate = format(new Date(date), "dd-MMM-yyyy");
+    const formattedTime = format(new Date(date), "hh:mm a");
+    return `${formattedDate} ${formattedTime}`;
+  };
+
   private onClickMemberApprove = () => {
     this.setState({
       Confirmation: {
@@ -678,9 +695,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
         hideWarningDialog: false,
       });
 
-    }else{
-       
-     if (!this.state.isPasscodeValidated) {
+    }else if (!this.state.isPasscodeValidated) {
       this.setState({
         isPasscodeModalOpen: true,
         passCodeValidationFrom: "7000",
@@ -688,7 +703,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
       return; 
     }
 
-    }
+    
 
    
    
@@ -727,16 +742,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
             ...obj,
             status: "Approved",
             statusNumber: "9000",
-            actionDate: `${new Date().toLocaleDateString('en-GB', { 
-              day: '2-digit', 
-              month: '2-digit', 
-              year: 'numeric' 
-            })} ${new Date().toLocaleTimeString('en-GB', { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              second: '2-digit', 
-              hour12: false 
-            })}`
+            actionDate:  this. _formatDateTime(new Date())
           };
         } else {
           return obj;
@@ -746,6 +752,18 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     const isApprovedByAll = updatedCurrentApprover?.every(
       (obj: { status: string }) => obj.status === "Approved"
     );
+  
+    const checkingIsChairmanAvailable = updatedCurrentApprover.some((each:any)=>each.isChairman === true
+    )
+    console.log(checkingIsChairmanAvailable)
+
+    if (!checkingIsChairmanAvailable){
+      updatedCurrentApprover.push(this.state.chairmanObjectAfterFilter)
+    }
+
+    
+    console.log(updatedCurrentApprover)
+   
 
     
     const auditTrail = JSON.parse(itemFromList?.AuditTrail)
@@ -758,16 +776,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     auditTrail.push({
       action: `Committee meeting approved by ${this.props.userDisplayName}`,
       actionBy: this.props.userDisplayName,
-      actionDate:`${new Date().toLocaleDateString('en-GB', { 
-              day: '2-digit', 
-              month: '2-digit', 
-              year: 'numeric' 
-            })} ${new Date().toLocaleTimeString('en-GB', { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              second: '2-digit', 
-              hour12: false 
-            })}`,
+      actionDate: this. _formatDateTime(new Date()),
     });
     comments.push({
       comments: this.state.comments,
@@ -778,7 +787,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
       .getByTitle(this._listName)
       .items.getById(getIdFromUrl())
       .update({
-        startProcessing:isApprovedByAll? true:false,
+        startProcessing:isApprovedByAll,
         AuditTrail: JSON.stringify(auditTrail),
         PreviousApproverId:(await this.props.sp?.web.currentUser())?.Id,
         MeetingStatus: isApprovedByAll
@@ -799,7 +808,17 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
   private handleReturnByMembers = async () => {
     this.setState({isLoading:true, hideCnfirmationDialog: !this.state.hideCnfirmationDialog,})
-    const updatedCurrentApprover = this.state.CommitteeMeetingMembersDTO?.map(
+
+    const itemId = getIdFromUrl();
+    const itemFromList = await this._getItemDataFromList(itemId);
+    console.log(itemFromList);
+
+    const _CommitteeMemberDTO = JSON.parse(itemFromList?.CommitteeMeetingMembersDTO).filter(
+      (each:any)=>each.isChairman === false
+    );
+    
+    console.log(_CommitteeMemberDTO)
+    const updatedCurrentApprover =_CommitteeMemberDTO?.map(
       (obj: any) => {
         if (
           obj.memberEmail.toLowerCase() ===
@@ -808,52 +827,34 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
           return {
             ...obj,
             status: "Returned",
-            actionDate: `${new Date().toLocaleDateString('en-GB', { 
-              day: '2-digit', 
-              month: '2-digit', 
-              year: 'numeric' 
-            })} ${new Date().toLocaleTimeString('en-GB', { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              second: '2-digit', 
-              hour12: false 
-            })}`
+            actionDate:  this. _formatDateTime(new Date())
           };
         } else {
           return obj;
         }
       }
     );
-    const auditTrail = this.state.AuditTrail || [];
-    const comments = this.state.CommitteeMeetingMemberCommentsDT;
+    const checkingIsChairmanAvailable = updatedCurrentApprover.some((each:any)=>each.isChairman === true
+  )
+  console.log(checkingIsChairmanAvailable)
+
+  if (!checkingIsChairmanAvailable){
+    updatedCurrentApprover.push(this.state.chairmanObjectAfterFilter)
+  }
+
+    console.log(updatedCurrentApprover)
+    const auditTrail = JSON.parse(itemFromList?.AuditTrail)
+ const comments = this.state.CommitteeMeetingMemberCommentsDT;
 
     auditTrail.push({
       action: `Committee meeting returned by ${this.props.userDisplayName}`,
       actionBy: this.props.userDisplayName,
-      actionDate: `${new Date().toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric' 
-      })} ${new Date().toLocaleTimeString('en-GB', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit', 
-        hour12: false 
-      })}`
+      actionDate:  this. _formatDateTime(new Date())
     });
     comments.push({
       comments: this.state.comments,
       commentedBy: this.props.userDisplayName,
-      createdDate:`${new Date().toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric' 
-      })} ${new Date().toLocaleTimeString('en-GB', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit', 
-        hour12: false 
-      })}`,
+      createdDate: this. _formatDateTime(new Date()),
     });
     const item = await this.props.sp.web.lists
       .getByTitle(this._listName)
@@ -880,22 +881,17 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
   private handleApproveByChairman = async () => {
     this.setState({isLoading:true, hideCnfirmationDialog: !this.state.hideCnfirmationDialog,})
-    const auditTrail: any[] = this.state.AuditTrail;
+
+    const itemId = getIdFromUrl();
+    const itemFromList = await this._getItemDataFromList(itemId);
+    console.log(itemFromList);
+    const auditTrail = JSON.parse(itemFromList?.AuditTrail)
     const comments = this.state.CommitteeMeetingMemberCommentsDT;
 
     auditTrail.push({
       action: `Committee meeting approved by Chairman`,
       actionBy: this.props.userDisplayName,
-      actionDate: `${new Date().toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric' 
-      })} ${new Date().toLocaleTimeString('en-GB', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit', 
-        hour12: false 
-      })}`
+      actionDate:  this. _formatDateTime(new Date())
     });
     comments.push({
       comments: this.state.comments,
@@ -959,29 +955,29 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
   }
   };
 
-  public handlePasscodeSuccess = () => {
+  
+
+
+  public handlePasscodeSuccess = (): void => {
     this.setState(
-      { isPasscodeValidated: true, isPasscodeModalOpen: false },
-      () => {
-        switch (this.state.passCodeValidationFrom) {
-          case "7000": //call back
-          if (this.state.comments) {
-            this.setState({
-              Confirmation: {
-                Confirmtext: "Are you sure you want to return this meeting?",
-                Description: "Please click on Confirm button to return meeting.",
-              },
-              hideCnfirmationDialog: false,
-              actionBtn: "mbrReturn",
-            });
-          }
-            break;
-          default:
-            break;
+        { isPasscodeValidated: true, isPasscodeModalOpen: false },
+        () => {
+            if (this.state.passCodeValidationFrom === "7000") { 
+                if (this.state.comments) {
+                    this.setState({
+                        Confirmation: {
+                            Confirmtext: "Are you sure you want to return this meeting?",
+                            Description: "Please click on Confirm button to return meeting.",
+                        },
+                        hideCnfirmationDialog: false,
+                        actionBtn: "mbrReturn",
+                    });
+                }
+            }
         }
-      }
     );
-  };
+};
+
 
   private _openDocumentinTab=(url:string)=>{
     const fileUrl = window.location.protocol + "//" + window.location.host+url
@@ -1030,8 +1026,7 @@ window.location.href=fileUrl;
           {/* Meeting ID: Section */}
           <div className={styles.halfWidth}>
             <label className={styles.label} htmlFor="_MeetinngId">
-              Meeting ID:
-              <span className={styles.warning}>*</span>
+              Meeting ID :<span className={styles.warning}>*</span>
             </label>
             <TextField
             id="_MeetinngId"
@@ -1072,8 +1067,7 @@ window.location.href=fileUrl;
           {/* Chairman: Section */}
           <div className={styles.halfWidth}>
             <label className={styles.label} htmlFor="_Chairman">
-              Chairman:
-              <span className={styles.warning}>*</span>
+              Chairman :<span className={styles.warning}>*</span>
             </label>
             <TextField
             id="_Chairman"
@@ -1232,11 +1226,11 @@ window.location.href=fileUrl;
           <div>
             <div style={{ overflowX: "auto", width: "100%" }}>
               <DetailsList
-                items={this.state.CommitteeMeetingNoteDTO} // Data for the table
-                columns={this.columnsCommitteeMeetingMinutes} // Columns for the table
-                layoutMode={DetailsListLayoutMode.fixedColumns} // Keep columns fixed
-                selectionMode={SelectionMode.none} // No selection column
-                isHeaderVisible={true} // Show column headers
+                items={this.state.CommitteeMeetingNoteDTO} 
+                columns={this.columnsCommitteeMeetingMinutes} 
+                layoutMode={DetailsListLayoutMode.fixedColumns} 
+                selectionMode={SelectionMode.none} 
+                isHeaderVisible={true} 
               />
             </div>
           </div>
@@ -1266,15 +1260,29 @@ window.location.href=fileUrl;
               className={`${styles.generalSectionApproverDetails}`}
               style={{ flexGrow: 1, margin: "10 10px" }}
             >
-              <Toggle
-                label="Do you want to return?"
-                defaultChecked={false}
-                onText="On"
-                offText="Off"
-                onChange={this.isReturnChecked}
-                role="checkbox"
-              />
-              <br />
+          <div>
+        
+        <label htmlFor="returnCheckbox">Do you want to return?</label>
+        <br />
+        <div className={styles.sliderContainer}>
+        <input
+          type="checkbox"
+          id="returnCheckbox"
+          checked={this.state.isRturn}
+          onChange={this.isReturnChecked}
+          aria-checked={this.state.isRturn}
+          className={styles.hiddenCheckbox}  
+        />  
+        <label htmlFor="returnCheckbox" className={styles.toggleSwitch} aria-label="Toggle return checkbox">
+          <span className={styles.slider} />
+        </label>
+
+      
+        </div>
+      </div>
+
+
+              
               {this.state.isRturn && (
                 <div>
                   <label className={styles.label} htmlFor="_ApproversReturnCmt">Comments <span className={styles.warning}>*</span> :</label>
@@ -1399,6 +1407,22 @@ window.location.href=fileUrl;
                    const committeMemberDTO =  _CommitteeMemberDTO.filter(
                       (each:any)=>each.memberEmail === this._currentUserEmail
                     )[0]
+                  
+                    if (item?.StatusNumber === '7000'){
+
+                      this.setState({
+                     
+                        hideParellelActionAlertDialog: true,
+                        parellelActionAlertMsg:
+                          `This request has been ${item?.MeetingStatus.toLowerCase()}.`,
+                      });
+
+
+                    return
+
+                    }
+
+
 
                     if (committeMemberDTO.status !== 'Pending'){
 
@@ -1406,7 +1430,7 @@ window.location.href=fileUrl;
                      
                         hideParellelActionAlertDialog: true,
                         parellelActionAlertMsg:
-                          `This request has been ${committeMemberDTO.status.toLowerCase()}.`,
+                          `This request has been ${item?.MeetingStatus.toLowerCase()}.`,
                       });
 
 
@@ -1415,6 +1439,8 @@ window.location.href=fileUrl;
                     }
 
                   }
+
+                  
 
                   this.onClickMemberApprove()
 
@@ -1457,13 +1483,28 @@ window.location.href=fileUrl;
                       (each:any)=>each.memberEmail === this._currentUserEmail
                     )[0]
 
+
+                    if (item?.StatusNumber === '7000'){
+
+                      this.setState({
+                     
+                        hideParellelActionAlertDialog: true,
+                        parellelActionAlertMsg:
+                          `This request has been ${item?.MeetingStatus.toLowerCase()}.`,
+                      });
+
+
+                    return
+
+                    }
+
                     if (committeMemberDTO.status !== 'Pending'){
 
                       this.setState({
                      
                         hideParellelActionAlertDialog: true,
                         parellelActionAlertMsg:
-                          `This request has been ${committeMemberDTO.status}.`,
+                          `This request has been ${item?.MeetingStatus.toLowerCase()}.`,
                       });
 
 
@@ -1785,10 +1826,10 @@ window.location.href=fileUrl;
                                       isOpen={this.state.hideParellelActionAlertDialog}
                                       onDismiss={() => {
                                         console.log("close triggered");
-                                        this.setState({
-                                          hideParellelActionAlertDialog:
-                                            !this.state.hideParellelActionAlertDialog,
-                                        });
+                                        this.setState((prevState) => ({
+                                          hideParellelActionAlertDialog: !prevState.hideParellelActionAlertDialog,
+                                        }));
+                                        
                                       }}
                                       isBlocking={true}
                                       containerClassName={Cutsomstyles.modal}
@@ -1802,6 +1843,7 @@ window.location.href=fileUrl;
                                           iconProps={{ iconName: "Cancel" }}
                                           onClick={() => {
                                             console.log("close triggered");
+                                            window.location.reload();
                                             this.setState({ hideParellelActionAlertDialog: false });
                                           }}
                                         />
@@ -1813,9 +1855,11 @@ window.location.href=fileUrl;
                                         <PrimaryButton
                                           className={Cutsomstyles.button}
                                           iconProps={{ iconName: "ReplyMirrored" }}
-                                          onClick={() =>
+                                          onClick={() =>{
                                             this.setState({ hideParellelActionAlertDialog: false })
-                                          }
+                                            window.location.reload();
+            
+                                          }}
                                           text="OK"
                                         />
                                       </div>

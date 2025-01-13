@@ -561,6 +561,64 @@
 }
 
 
+.sliderContainer{
+  margin-top: 5px;
+}
+
+
+
+
+
+.hiddenCheckbox {
+  position: absolute;
+  width: 0;
+  height: 0;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+
+
+.toggleSwitch {
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+  background-color: #ccc;
+  border-radius: 34px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+
+.slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+
+.hiddenCheckbox:checked + .toggleSwitch .slider {
+  transform: translateX(20px);
+}
+
+
+.hiddenCheckbox:checked + .toggleSwitch {
+  background-color:"[theme: themePrimary]";
+}
+
+
+
+
+
 
 
 

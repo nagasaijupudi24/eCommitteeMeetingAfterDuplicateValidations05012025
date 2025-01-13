@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 /* eslint-disable react/self-closing-comp */
 /* eslint-disable max-lines */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
@@ -32,6 +33,7 @@ import {
   SpinnerSize,
   TextField,
 } from "@fluentui/react";
+import { format } from "date-fns";
 import {
   IPeoplePickerContext,
   PeoplePicker,
@@ -317,6 +319,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
         .filter(
           filterQury
         )();
+        console.log(fieldDetails,"Note Request Details")
 
       const dropDownDataListing = fieldDetails
         .filter((each: any) => {
@@ -324,9 +327,11 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
         })
         .map((each: any) => {
           return {
+            ...each,
             key: each.Title,
             text: each.Title,
             id: each.Title,
+            ...each
           };
         });
 
@@ -336,6 +341,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
             const link = await this._getItemDocumentsData(each.Title);
 
             return {
+              ...each,
               key: each.Title,
               text: each.Title,
               id: each.Id,
@@ -388,9 +394,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
         .files.select("*")
         .expand("Author", "Editor")();
       let pdfLink;
-      const tempFilesPdf: IFileDetails[] = [];
+      
       folderItemsPdf.forEach((values: any) => {
-        tempFilesPdf.push(this._getFileObj(values));
+     
         pdfLink = this._getFileObj(values).fileUrl;
       });
       return [pdfLink, `${this._libraryName}/${folderName}`];
@@ -432,9 +438,12 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     const nextYear = (currentyear + 1).toString().slice(-2);
 
     let meetingID = "";
-    this.setState({
-      meetingId: `${this.state.departmentAlias}/${currentyear}-${nextYear}/${id}`,
-    });
+   
+
+    this.setState((prevState) => ({
+      meetingId: `${prevState.departmentAlias}/${currentyear}-${nextYear}/${id}`,
+    }));
+    
 
     meetingID = `${this.state.departmentAlias}/${currentyear}-${nextYear}/${id}`;
 
@@ -476,6 +485,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
   private _getItemData = async (id: any) => {
     const item: any = await this._getItemDataFromList(id)
+    const _chairmanProfile = await this.props.sp.web.getUserById(item.ChairmanId)();
+    const _chairmanDesignation = await this._getUserProperties( _chairmanProfile?.LoginName);
+    console.log(_chairmanDesignation)
 
     this.setState({
       _IsAuthor:item.AuthorId ===  (await this.props.sp?.web.currentUser())?.Id,
@@ -502,7 +514,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
       isLoading: false,
       convernorData: JSON.parse(item.ConvenerDTO),
 
-      charimanData: { ...item.Chairman, chairmanId: item.ChairmanId },
+      charimanData: { ...item.Chairman, chairmanId: item.ChairmanId ,designation:_chairmanDesignation[0]},
     });
 
     return item;
@@ -967,8 +979,8 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   };
 
   private _getUserProperties = async (loginName: any): Promise<any> => {
-    let designation = "NA";
-    let email = "NA";
+    let designation ;
+    let email ;
     const profile = await this.props.sp.profiles.getPropertiesFor(loginName);
     designation = profile.Title;
     email = profile.Email;
@@ -1212,6 +1224,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     }
 
     makeCommitteeMeetingMemberDTO.push(_chairmanIncluded)
+    console.log(makeCommitteeMeetingMemberDTO)
 
     return JSON.stringify(makeCommitteeMeetingMemberDTO);
   };
@@ -1291,6 +1304,12 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
   }
 
+   private _formatDateTime = (date: string | number | Date) => {
+      const formattedDate = format(new Date(date), "dd-MMM-yyyy");
+      const formattedTime = format(new Date(date), "hh:mm a");
+      return `${formattedDate} ${formattedTime}`;
+    };
+
   private createEcommitteeMeetingObject = async (
     status: string,
     statusNumber: any
@@ -1306,16 +1325,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
       action: `Committee Meeting ${status}`,
 
-      actionDate: `${new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })} ${new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })}`,
+      actionDate: this. _formatDateTime(new Date()),
     };
     auditTrail.push(auditLog);
 
@@ -1359,16 +1369,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     const auditTrail = {
       action: `Committee Meeting Published`,
       actionBy: this.props.userDisplayName,
-      actionDate: `${new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })} ${new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })}`,
+      actionDate:this. _formatDateTime(new Date()),
     };
 
     this._itemId
@@ -1431,22 +1432,20 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
   private _handleReturnBack = async (): Promise<void> => {
     this.setState({ isModalOpen: false, isLoading: true });
-    const auditTrail = this.state.auditTrail || [];
+
+    
+    const itemFromList = await this._getItemDataFromList(this._itemId);
+
+    const _CommitteeMemberDTO = JSON.parse(itemFromList?.CommitteeMeetingMembersDTO).filter(
+      (each:any)=>each.isChairman === false
+    );
+    const auditTrail = JSON.parse(itemFromList?.AuditTrail);
 
 
     auditTrail.push({
       action: `Meeting Returned Back`,
       actionBy: this.props.userDisplayName,
-      actionDate: `${new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })} ${new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })}`,
+      actionDate: this. _formatDateTime(new Date()),
     });
 
     await this.props.sp.web.lists
@@ -1457,7 +1456,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     
         
         CommitteeMeetingMembersDTO: this._getCommitteeMeetingMembersDTO(
-          this.state.committeeMembersData
+          _CommitteeMemberDTO
         ),
         CommitteeMeetingNoteDTO: JSON.stringify(
           this.state.committeeNoteRecordsData
@@ -1501,16 +1500,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     auditTrail.push({
       action: `Meeting Over`,
       actionBy: this.props.userDisplayName,
-      actionDate: `${new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })} ${new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })}`,
+      actionDate: this. _formatDateTime(new Date()),
     });
 
     await this.props.sp.web.lists
@@ -1557,16 +1547,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     auditTrail.push({
       action: `Meeting MOM Published`,
       actionBy: this.props.userDisplayName,
-      actionDate: `${new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })} ${new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })}`,
+      actionDate: this. _formatDateTime(new Date()),
     });
 
     await this.props.sp.web.lists
@@ -2273,6 +2254,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   };
 
   public render(): React.ReactElement<IXenWpCommitteeMeetingsFormsProps> {
+    console.log(this.state)
     
     return (
       <div>
@@ -2329,11 +2311,11 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
         >
           {/* Meeting ID: Section */}
           <div className={styles.halfWidth}>
-            <label className={styles.label}>
-              Meeting ID:
-              <span className={styles.warning}>*</span>
+            <label className={styles.label} htmlFor="_MeetingId">
+              Meeting ID :<span className={styles.warning}>*</span>
             </label>
             <TextField
+            id="_MeetingId"
               type="text"
               className={styles.textField}
               value={this.state.meetingId}
@@ -2399,8 +2381,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
           {/* Chairman: Section */}
           <div className={styles.halfWidth}>
             <label className={styles.label} htmlFor="_Chairman">
-              Chairman:
-              <span className={styles.warning}>*</span>
+              Chairman :<span className={styles.warning}>*</span>
             </label>
             <TextField
             id="_Chairman"
@@ -3291,6 +3272,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                               iconProps={{ iconName: "Cancel" }}
                               onClick={() => {
                                 console.log("close triggered");
+                                window.location.reload();
                                 this.setState({ hideParellelActionAlertDialog: false });
                               }}
                             />
@@ -3302,8 +3284,13 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                             <PrimaryButton
                               className={Cutsomstyles.button}
                               iconProps={{ iconName: "ReplyMirrored" }}
-                              onClick={() =>
+                              onClick={() =>{
                                 this.setState({ hideParellelActionAlertDialog: false })
+                                window.location.reload();
+
+                              }
+
+                              
                               }
                               text="OK"
                             />

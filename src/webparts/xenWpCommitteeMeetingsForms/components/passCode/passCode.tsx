@@ -71,7 +71,7 @@ export default class PasscodeModal extends React.Component<
       const user = await this.props.sp.web.siteUsers.getByEmail(email)();
       return user.Id;
     } catch (error) {
-      throw error;
+      return error;
     }
   };
 
@@ -290,17 +290,17 @@ export default class PasscodeModal extends React.Component<
         </div>
         <div className={styles.body} style={{ textAlign: "center" }}>
           {isCreating ? (
-            <>
+           
               <p>
                 Passcode is not set. Please create a passcode to proceed
                 further.
               </p>
              
-            </>
+           
           ) : (
-            <>
+           
               <div className={styles.contentContainer}>
-                <label>Enter your passcode for verification:</label>
+                <label htmlFor="passcode">Enter your passcode for verification:</label>
                 {/* <TextField
                   value={passcode}
                   canRevealPassword
@@ -310,6 +310,7 @@ export default class PasscodeModal extends React.Component<
                 /> */}
                 <div style={{ width: "100%", marginTop: "5px", position: "relative" }}>
   <input
+  id="passcode"
     type={this.state.isPasswordVisible ? "text" : "password"}
     value={this.state.passcode}
     onChange={this.onPasscodeChange}
@@ -352,7 +353,7 @@ export default class PasscodeModal extends React.Component<
                   <span className={styles.errorMessage}>{errorMessage}</span>
                 )}
               </div>
-            </>
+          
           )}
         </div>
         <div className={styles.footer}>
