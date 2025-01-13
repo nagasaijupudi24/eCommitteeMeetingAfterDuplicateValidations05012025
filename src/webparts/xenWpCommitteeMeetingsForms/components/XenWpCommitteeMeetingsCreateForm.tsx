@@ -701,10 +701,14 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   ];
 
   private _deleteRecord = (id: number) => {
-    const updatedData = this.state.committeeNoteRecordsData.filter(
-      (record: { id: number }) => record.id !== id
-    );
-    this.setState({ committeeNoteRecordsData: updatedData });
+
+    this.setState((prevState)=>{
+      const updatedData = prevState.committeeNoteRecordsData.filter(
+        (record: { id: number }) => record.id !== id
+      );
+      return {committeeNoteRecordsData: updatedData }
+      
+    })
   };
 
   private columnsCommitteeNoteRecords: IColumn[] = [
@@ -3223,22 +3227,27 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
               <PrimaryButton
                 iconProps={{ iconName: "Add" }}
                 onClick={() => {
-                  const updatedData = this.state.committeeNoteRecordsData.map(
-                    (each: any) => {
-                      if (each.key === this.state.selectedMOMNoteRecord) {
-                        return {
-                          ...each,
-                          mom: this.state.draftResolutionFieldValue,
-                        };
-                      }
-                      return each;
-                    }
-                  );
+                 
 
-                  this.setState({
-                    draftResolutionFieldValue: "",
-                    committeeNoteRecordsData: updatedData,
-                    dialogType: "",
+                  this.setState((prevState)=>{
+
+                    const updatedData = prevState.committeeNoteRecordsData.map(
+                      (each: any) => {
+                        if (each.key === this.state.selectedMOMNoteRecord) {
+                          return {
+                            ...each,
+                            mom: this.state.draftResolutionFieldValue,
+                          };
+                        }
+                        return each;
+                      }
+                    );
+
+                    return {
+                      draftResolutionFieldValue: "",
+                      committeeNoteRecordsData: updatedData,
+                      dialogType: "",
+                    }
                   });
 
                   this._closeModal();
@@ -3255,10 +3264,10 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                           isOpen={this.state.hideParellelActionAlertDialog}
                           onDismiss={() => {
                             console.log("close triggered");
-                            this.setState({
+                            this.setState((prevState)=>({
                               hideParellelActionAlertDialog:
-                                !this.state.hideParellelActionAlertDialog,
-                            });
+                                !prevState.hideParellelActionAlertDialog,
+                            }));
                           }}
                           isBlocking={true}
                           containerClassName={Cutsomstyles.modal}

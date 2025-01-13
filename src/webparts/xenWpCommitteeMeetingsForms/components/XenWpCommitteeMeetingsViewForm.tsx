@@ -721,7 +721,11 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
   };
 
   private handleApproveByMembers = async () => {
-    this.setState({isLoading:true, hideCnfirmationDialog: !this.state.hideCnfirmationDialog,})
+    this.setState((prevState) => ({
+      isLoading: true,
+      hideCnfirmationDialog: !prevState.hideCnfirmationDialog,
+    }));
+    
     const itemId = getIdFromUrl();
     const itemFromList = await this._getItemDataFromList(itemId);
     console.log(itemFromList);
@@ -798,16 +802,21 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
         PreviousActionerId: (await this.props.sp?.web.currentUser())?.Id,
       });
     if (item) {
-      this.setState({
+      this.setState((prevState) => ({
         isLoading: false,
-        hideSuccussDialog: !this.state.hideSuccussDialog,
+        hideSuccussDialog: !prevState.hideSuccussDialog,
         SuccussMsg: "Committee meeting has been approved successfully",
-      });
+      }));
+      
     }
   };
 
   private handleReturnByMembers = async () => {
-    this.setState({isLoading:true, hideCnfirmationDialog: !this.state.hideCnfirmationDialog,})
+    this.setState((prevState) => ({
+      isLoading: true,
+      hideCnfirmationDialog: !prevState.hideCnfirmationDialog,
+    }));
+    
 
     const itemId = getIdFromUrl();
     const itemFromList = await this._getItemDataFromList(itemId);
@@ -871,16 +880,21 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
         PreviousActionerId: (await this.props.sp?.web.currentUser())?.Id,
       });
     if (item) {
-      this.setState({
-        hideSuccussDialog: !this.state.hideSuccussDialog,
+      this.setState((prevState) => ({
+        hideSuccussDialog: !prevState.hideSuccussDialog,
         isLoading: false,
         SuccussMsg: "Committee meeting has been returned successfully",
-      });
+      }));
+      
     }
   };
 
   private handleApproveByChairman = async () => {
-    this.setState({isLoading:true, hideCnfirmationDialog: !this.state.hideCnfirmationDialog,})
+    this.setState((prevState) => ({
+      isLoading: true,
+      hideCnfirmationDialog: !prevState.hideCnfirmationDialog,
+    }));
+    
 
     const itemId = getIdFromUrl();
     const itemFromList = await this._getItemDataFromList(itemId);
@@ -913,11 +927,12 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
         PreviousActionerId: (await this.props.sp?.web.currentUser())?.Id,
       });
     if (item) {
-      this.setState({
-        hideSuccussDialog: !this.state.hideSuccussDialog,
+      this.setState((prevState) => ({
+        hideSuccussDialog: !prevState.hideSuccussDialog,
         isLoading: false,
         SuccussMsg: "Committee meeting has been approved successfully",
-      });
+      }));
+      
     }
   };
 
