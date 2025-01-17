@@ -41,6 +41,7 @@ import {
 } from "@pnp/spfx-controls-react/lib/PeoplePicker";
 
 import { RichText } from "@pnp/spfx-controls-react/lib/RichText";
+import { decode, encode } from 'he';
 import "@pnp/sp/site-users/web";
 import "@pnp/sp/fields";
 import "@pnp/sp/webs";
@@ -205,7 +206,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   private _homePageUrl: any = this.props.homePageUrl;
 
 
-  private _currentUserEmail = this.props.context.pageContext.user.email;
+  private _currentUserEmail =( this.props.context.pageContext.user.email).toLocaleLowerCase();
 
   constructor(props: any) {
     super(props);
@@ -271,17 +272,21 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
       msGraphClientFactory: this.props.context.msGraphClientFactory,
       spHttpClient: this.props.context.spHttpClient,
     };
-    this.getfield();
-    this._fetchDepartmentAlias();
-
-    const listName = this.props.listName;
-    this._listName = listName?.title;
 
     const committeName = this.props.committeeMeetingNameList;
     this._committeNameList = committeName?.title;
-    this._itemId && this._getItemData(this._itemId);
     const libraryTilte = this.props.libraryId;
     this._libraryName = libraryTilte?.title;
+    
+    const listName = this.props.listName;
+    this._listName = listName?.title;
+    this.getfield();
+    this._fetchDepartmentAlias();
+
+
+    
+    this._itemId && this._getItemData(this._itemId);
+    
   }
 
   public componentDidMount() {
@@ -523,10 +528,43 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   private getfield = async () => {
     try {
       
+      
+      console.log(this._committeNameList,"Committee List name")
 
-      const fieldDetails = await this.props.sp.web.lists
-        .getByTitle("CommitteeMeetingApprovers")
+      //  const convernorDetails = await this.props.sp.web.lists
+      // .getByTitle(this._committeNameList)
+      // .items.filter(`Convener/EMail eq '${this._currentUserEmail}'`)
+      // .select(
+        
+
+      //   "Convener/EMail"
+      // )
+      // .expand("Convener")();
+      // console.log(convernorDetails)
+
+      const convernorDetails = await this.props.sp.web.lists
+      .getByTitle(this._committeNameList)
+      .items.filter(`Convener/EMail eq '${this._currentUserEmail}'`)
+      .select(
+        
+       
+        "Chairman/EMail",
+       
+      )
+      .expand("Chairman")();
+      console.log(convernorDetails)
+
+      const isConvernorExists = convernorDetails.length > 0
+      console.log(isConvernorExists)
+
+      if (isConvernorExists){
+
+        const fieldDetails = await this.props.sp.web.lists
+        .getByTitle(this._committeNameList)
         .fields.filter("Hidden eq false and ReadOnlyField eq false")();
+
+
+    
 
      
 
@@ -551,7 +589,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
           each.length > 1 &&
           Array.isArray(each[1])
         ) {
-          if (each[0] === "CommitteeName") {
+          if (each[0] === "CommitteeNames") {
             const committenameArray = each[1].map((item, index) => {
               return { key: item, text: item };
             });
@@ -560,6 +598,18 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
           }
         }
       });
+        
+      }else{
+        this.setState({ committename: [] });
+
+      }
+
+      
+
+
+      
+
+    
 
 
     } catch (error) {
@@ -567,6 +617,53 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     }
   };
 
+
+  // private getfield = async () => {
+  //   try {
+      
+
+  //     const fieldDetails = await this.props.sp.web.lists
+  //       .getByTitle("CommitteeMeetingApprovers")
+  //       .fields.filter("Hidden eq false and ReadOnlyField eq false")();
+
+     
+
+  //     const filtering = fieldDetails.map(
+  //       (_x: { TypeDisplayName: string; InternalName: any; Choices: any }) => {
+  //         if (_x.TypeDisplayName === "Choice") {
+  //           return [_x.InternalName, _x.Choices];
+  //         }
+  //       }
+  //     );
+
+  //     const finalList = filtering?.filter((each: any) => {
+  //       if (typeof each !== "undefined") {
+  //         return each;
+  //       }
+  //     });
+
+  //     finalList?.map((each: string | any[] | undefined) => {
+  //       if (
+  //         each !== undefined &&
+  //         Array.isArray(each) &&
+  //         each.length > 1 &&
+  //         Array.isArray(each[1])
+  //       ) {
+  //         if (each[0] === "CommitteeName") {
+  //           const committenameArray = each[1].map((item, index) => {
+  //             return { key: item, text: item };
+  //           });
+
+  //           this.setState({ committename: committenameArray });
+  //         }
+  //       }
+  //     });
+
+
+  //   } catch (error) {
+  //     console.error("Error fetching field details: ", error);
+  //   }
+  // };
   private handleDeleteCommitteeMemberData = (index: number): void => {
 
 
@@ -578,6 +675,23 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     }));
   };
 
+  private _columnsCommitteeMembersSNOObjOnRender = (_item: any, _index?: number):any => (
+    <span>{(_index !== undefined ? _index : 0) + 1}</span>
+  )
+
+
+  private _columnsCommitteeMembersActionObjOnRender =(_item: any, index?: number) => (
+    <IconButton
+      iconProps={{ iconName: "Delete" }}
+      title="Delete"
+      ariaLabel="Delete"
+      onClick={() => this.handleDeleteCommitteeMemberData(index!)}
+      styles={{
+        root: { paddingBottom: "16px", background: "transparent" },
+      }}
+    />
+  )
+
   private columnsCommitteeMembers: IColumn[] = [
     {
       key: "sNo",
@@ -586,9 +700,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
       minWidth: 60,
       maxWidth: 120,
       isResizable: true,
-      onRender: (_item: any, _index?: number) => (
-        <span>{(_index !== undefined ? _index : 0) + 1}</span>
-      ),
+      onRender: this._columnsCommitteeMembersSNOObjOnRender
     },
     {
       key: "memberEmailName",
@@ -621,17 +733,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
       minWidth: 150,
       maxWidth: 200,
       isResizable: true,
-      onRender: (_item: any, index?: number) => (
-        <IconButton
-          iconProps={{ iconName: "Delete" }}
-          title="Delete"
-          ariaLabel="Delete"
-          onClick={() => this.handleDeleteCommitteeMemberData(index!)}
-          styles={{
-            root: { paddingBottom: "16px", background: "transparent" },
-          }}
-        />
-      ),
+      onRender: this._columnsCommitteeMembersActionObjOnRender
     },
   ];
 
@@ -1872,8 +1974,15 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   };
 
   private _onRichTextChangeForMom = (newText: string) => {
+
+    const encodedValue = encode(newText, { allowUnsafeSymbols: true });
+    console.log(encodedValue, " ,encodedValue (Encoded for safe storage)");
+
+    const decodedValue  = decode(newText);
+    console.log(decodedValue," ,encodedValue")
+    console.log(newText," ,newText")
  
-    this.setState({ draftResolutionFieldValue: newText });
+    this.setState({ draftResolutionFieldValue: decodedValue });
     return newText;
   };
 
@@ -3264,6 +3373,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                           isOpen={this.state.hideParellelActionAlertDialog}
                           onDismiss={() => {
                             console.log("close triggered");
+                            window.location.reload();
                             this.setState((prevState)=>({
                               hideParellelActionAlertDialog:
                                 !prevState.hideParellelActionAlertDialog,

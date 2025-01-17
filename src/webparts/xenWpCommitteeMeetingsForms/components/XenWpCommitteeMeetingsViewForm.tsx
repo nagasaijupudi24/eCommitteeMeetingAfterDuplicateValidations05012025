@@ -515,6 +515,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     const isChecked = event.target.checked;
 
   this.setState({
+    comments:'', //reset the comments on Toggle with switch
     isRturn: isChecked,  // Updates isRturn based on checkbox state
     isApproverBtn: !isChecked  // If isRturn is true, hide the Approver button, else show it
   });
@@ -996,7 +997,8 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
   private _openDocumentinTab=(url:string)=>{
     const fileUrl = window.location.protocol + "//" + window.location.host+url
-window.location.href=fileUrl;
+// window.location.href=fileUrl;
+window.open(fileUrl, "_blank");
 
   }
   public render(): React.ReactElement<IXenWpCommitteeMeetingsFormsProps> {
@@ -1841,9 +1843,11 @@ window.location.href=fileUrl;
                                       isOpen={this.state.hideParellelActionAlertDialog}
                                       onDismiss={() => {
                                         console.log("close triggered");
+
                                         this.setState((prevState) => ({
                                           hideParellelActionAlertDialog: !prevState.hideParellelActionAlertDialog,
                                         }));
+                                        window.location.reload();
                                         
                                       }}
                                       isBlocking={true}
