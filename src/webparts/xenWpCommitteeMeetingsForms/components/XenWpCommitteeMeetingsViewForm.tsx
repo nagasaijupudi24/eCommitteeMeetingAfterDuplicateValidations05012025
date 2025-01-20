@@ -29,6 +29,8 @@ import {
 import { RichText } from "@pnp/spfx-controls-react/lib/controls/richText";
 import { format } from "date-fns";
 import PasscodeModal from "./passCode/passCode";
+// import * as he from 'he';
+
 
 interface CommtteeMeetingsState {
   MeetingNumber: string;
@@ -206,7 +208,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     const listName = this.props.listName;
     this._listName = listName?.title;
     this._getItemBy();
-    console.log(this._currentUserEmail)
+    
   }
 
   public componentDidMount() {
@@ -302,7 +304,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
     committeeMemberDTOFromList.filter((each:any)=>{
       if (each.isChairman === true){
-        console.log(each)
+       
         this.setState({chairmanObjectAfterFilter:each})
       }
     })
@@ -334,13 +336,79 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
    return item
   }
 
+  private _getStateObjectFewProperties = (item:any)=>{
+    return {
+      meetingId: item.Title,
+      MeetingNumber: item.MeetingNumber,
+      MeetingDate: item.MeetingDate
+        ?this. _formatDateTime(new Date(item.MeetingDate)) 
+        : "",
+      MeetingLink: item.MeetingLink,
+      MeetingMode: item.MeetingMode,
+      MeetingSubject: item.MeetingSubject,
+      MeetingStatus: item.MeetingStatus,
+      Department: item.Department,
+      ConsolidatedPDFPath: item.MeetingNumber,
+      CommitteeName: item.CommitteeName,
+      Chairman:
+        item.Chairman === null && item.ChairmanId === null
+          ? null
+          : item.Chairman,
+      CommitteeMeetingGuestMembersDTO:
+        item.CommitteeMeetingGuestMembersDTO === null
+          ? []
+          : JSON.parse(item.CommitteeMeetingGuestMembersDTO),
+      CommitteeMeetingMembersDTO:
+        item.CommitteeMeetingMembersDTO === null
+          ? []
+          : this._filterChairmanDataFromCommitteeMembersDTO(item.CommitteeMeetingMembersDTO), //CommitteeMeetingMemberCommentsDTO
+
+    }
+  }
+
+
+  private _getStateObject = (item:any):any=>{
+    return    {
+      ...this._getStateObjectFewProperties(item),
+      CommitteeMeetingMemberCommentsDT:
+        item.CommitteeMeetingMemberCommentsDT === null
+          ? []
+          : JSON.parse(item.CommitteeMeetingMemberCommentsDT), //CommitteeMeetingMemberCommentsDTO
+      CommitteeMeetingNoteDTO:
+        item.CommitteeMeetingNoteDTO === null
+          ? []
+          : JSON.parse(item.CommitteeMeetingNoteDTO),
+      CommitteeMeetingMembers:
+        item.CommitteeMeetingMembers === null
+          ? []
+          : item.CommitteeMeetingGuestMembersDTO,
+      CommitteeMeetingGuests: [],
+      AuditTrail: item.AuditTrail === null ? [] : JSON.parse(item.AuditTrail),
+      StatusNumber: item.StatusNumber,
+      CurrentApprover:
+        item.CurrentApprover === null && item.CurrentApproverId === null
+          ? null
+          : item.CurrentApprover,
+      FinalApprover:
+        item.FinalApprover === null && item.FinalApproverId === null
+          ? null
+          : item.FinalApprover,
+      PreviousApprover:
+        item.PreviousApprover === null && item.PreviousApproverId === null
+          ? null
+          : item.PreviousApprover,
+      Created:this._formatDateTime(new Date(item.Created)),
+       
+    }
+  }
+
   private _getItemBy = async () => {
      await this.props.sp?.web.currentUser();
     const itemId = getIdFromUrl();
     const item = await this._getItemDataFromList(itemId)
 
 
-    console.log(item,"Item fetched from the List")
+   
   
 
     if (item) {
@@ -348,63 +416,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     await  this. _getConslidatePdf(item.Title)
   }
 
-      this.setState({
-        meetingId: item.Title,
-        MeetingNumber: item.MeetingNumber,
-        MeetingDate: item.MeetingDate
-          ? new Date(item.MeetingDate).toLocaleDateString()
-          : "",
-        MeetingLink: item.MeetingLink,
-        MeetingMode: item.MeetingMode,
-        MeetingSubject: item.MeetingSubject,
-        MeetingStatus: item.MeetingStatus,
-        Department: item.Department,
-        ConsolidatedPDFPath: item.MeetingNumber,
-        CommitteeName: item.CommitteeName,
-        Chairman:
-          item.Chairman === null && item.ChairmanId === null
-            ? null
-            : item.Chairman,
-        CommitteeMeetingGuestMembersDTO:
-          item.CommitteeMeetingGuestMembersDTO === null
-            ? []
-            : JSON.parse(item.CommitteeMeetingGuestMembersDTO),
-        CommitteeMeetingMembersDTO:
-          item.CommitteeMeetingMembersDTO === null
-            ? []
-            : this._filterChairmanDataFromCommitteeMembersDTO(item.CommitteeMeetingMembersDTO), //CommitteeMeetingMemberCommentsDTO
-        CommitteeMeetingMemberCommentsDT:
-          item.CommitteeMeetingMemberCommentsDT === null
-            ? []
-            : JSON.parse(item.CommitteeMeetingMemberCommentsDT), //CommitteeMeetingMemberCommentsDTO
-        CommitteeMeetingNoteDTO:
-          item.CommitteeMeetingNoteDTO === null
-            ? []
-            : JSON.parse(item.CommitteeMeetingNoteDTO),
-        CommitteeMeetingMembers:
-          item.CommitteeMeetingMembers === null
-            ? []
-            : item.CommitteeMeetingGuestMembersDTO,
-        CommitteeMeetingGuests: [],
-        AuditTrail: item.AuditTrail === null ? [] : JSON.parse(item.AuditTrail),
-        StatusNumber: item.StatusNumber,
-        CurrentApprover:
-          item.CurrentApprover === null && item.CurrentApproverId === null
-            ? null
-            : item.CurrentApprover,
-        FinalApprover:
-          item.FinalApprover === null && item.FinalApproverId === null
-            ? null
-            : item.FinalApprover,
-        PreviousApprover:
-          item.PreviousApprover === null && item.PreviousApproverId === null
-            ? null
-            : item.PreviousApprover,
-        Created:
-          new Date(item.Created).toLocaleDateString() +
-          " " +
-          new Date(item.Created).toLocaleTimeString(),
-      });
+      this.setState(this._getStateObject(item));
 
       return item.StatusNumber;
     }
@@ -548,6 +560,14 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     },
   ];
 
+  // private escapeHtml = (input: string): string => {
+  //   return input.replace(/<p>(.*?)<\/p>/g, (match, content) => {
+  //     const div = document.createElement('div');
+  //     div.innerText = content; // Escape only the content within the <p> tags
+  //     return `<p>${div.innerHTML}</p>`; // Return the <p> tags with escaped content
+  //   });
+  // };
+
 
   private columnsCommitteeMeetingMinutes: IColumn[] = [
     {
@@ -592,13 +612,24 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
       minWidth: 150,
       maxWidth: 200,
       isResizable: true,
-      onRender: (item: any) => (
-        <RichText
-          value={item.mom}
-          isEditMode={false}
-          style={{ minHeight: "auto", padding: "8px" }} 
-        />
-      ),
+      onRender: (item: any) =>{
+        // const encodedContent = he.encode(item.mom, {
+        //   allowUnsafeSymbols: true,
+        //   encodeEverything: false,
+        // });
+        //   const decodedHtml = he.decode(encodedContent)
+        //  console.log(decodedHtml)
+        // const escapedHtml = this.escapeHtml(item.mom);
+        // console.log(escapedHtml)
+        
+       
+         return <RichText
+            value={item.meetingMinutesForRichTextComponent}
+            isEditMode={false}
+            style={{ minHeight: "auto", padding: "8px" }} 
+          />
+        
+      } 
     },
     {
       key: "noteLink",
@@ -729,12 +760,12 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     
     const itemId = getIdFromUrl();
     const itemFromList = await this._getItemDataFromList(itemId);
-    console.log(itemFromList);
+
 
     const _CommitteeMemberDTO = JSON.parse(itemFromList?.CommitteeMeetingMembersDTO).filter(
       (each:any)=>each.isChairman === false
     );
-    console.log(_CommitteeMemberDTO)
+   
     const updatedCurrentApprover = _CommitteeMemberDTO?.map(
       (obj:any,index:any) => {
 
@@ -760,14 +791,14 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
   
     const checkingIsChairmanAvailable = updatedCurrentApprover.some((each:any)=>each.isChairman === true
     )
-    console.log(checkingIsChairmanAvailable)
+    
 
     if (!checkingIsChairmanAvailable){
       updatedCurrentApprover.push(this.state.chairmanObjectAfterFilter)
     }
 
     
-    console.log(updatedCurrentApprover)
+ 
    
 
     
@@ -783,11 +814,11 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
       actionBy: this.props.userDisplayName,
       actionDate: this. _formatDateTime(new Date()),
     });
-    comments.push({
+   if( this.state.comments) { comments.push({
       comments: this.state.comments,
       commentedBy: this.props.userDisplayName,
-      createdDate: new Date().toLocaleDateString(),
-    });
+      createdDate:this. _formatDateTime(new Date()),
+    });}
     const item = await this.props.sp.web.lists
       .getByTitle(this._listName)
       .items.getById(getIdFromUrl())
@@ -821,13 +852,13 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
     const itemId = getIdFromUrl();
     const itemFromList = await this._getItemDataFromList(itemId);
-    console.log(itemFromList);
+   
 
     const _CommitteeMemberDTO = JSON.parse(itemFromList?.CommitteeMeetingMembersDTO).filter(
       (each:any)=>each.isChairman === false
     );
     
-    console.log(_CommitteeMemberDTO)
+ 
     const updatedCurrentApprover =_CommitteeMemberDTO?.map(
       (obj: any) => {
         if (
@@ -846,13 +877,13 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
     );
     const checkingIsChairmanAvailable = updatedCurrentApprover.some((each:any)=>each.isChairman === true
   )
-  console.log(checkingIsChairmanAvailable)
+  
 
   if (!checkingIsChairmanAvailable){
     updatedCurrentApprover.push(this.state.chairmanObjectAfterFilter)
   }
 
-    console.log(updatedCurrentApprover)
+
     const auditTrail = JSON.parse(itemFromList?.AuditTrail)
  const comments = this.state.CommitteeMeetingMemberCommentsDT;
 
@@ -899,7 +930,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
 
     const itemId = getIdFromUrl();
     const itemFromList = await this._getItemDataFromList(itemId);
-    console.log(itemFromList);
+    
     const auditTrail = JSON.parse(itemFromList?.AuditTrail)
     const comments = this.state.CommitteeMeetingMemberCommentsDT;
 
@@ -908,11 +939,13 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
       actionBy: this.props.userDisplayName,
       actionDate:  this. _formatDateTime(new Date())
     });
-    comments.push({
+    if( this.state.comments) { comments.push({
       comments: this.state.comments,
       commentedBy: this.props.userDisplayName,
-      createdDate: new Date().toLocaleDateString(),
-    });
+      createdDate:this. _formatDateTime(new Date()),
+    });}
+
+   
     const item = await this.props.sp.web.lists
       .getByTitle(this._listName)
       .items.getById(getIdFromUrl())
@@ -921,7 +954,7 @@ export default class XenWpCommitteeMeetingsViewForm extends React.Component<
         AuditTrail: JSON.stringify(auditTrail),
         CommitteeMeetingMemberCommentsDT: this.state.comments
           ? JSON.stringify(comments)
-          : null,
+          : JSON.stringify(this.state.CommitteeMeetingMemberCommentsDT),
 
         MeetingStatus: "Approved",
         StatusNumber: "9000",
@@ -1002,7 +1035,7 @@ window.open(fileUrl, "_blank");
 
   }
   public render(): React.ReactElement<IXenWpCommitteeMeetingsFormsProps> {
-    console.log(this.state)
+   
     return (
       <div>
         <div className={styles.titleContainer}>
@@ -1415,10 +1448,10 @@ window.open(fileUrl, "_blank");
                   if (itemId){
                     
                     const item = await this._getItemDataFromList(itemId);
-                    console.log(item);
+                    
 
                     const _CommitteeMemberDTO = JSON.parse(item?.CommitteeMeetingMembersDTO);
-                    console.log(_CommitteeMemberDTO)
+               
 
 
                    const committeMemberDTO =  _CommitteeMemberDTO.filter(
@@ -1490,10 +1523,10 @@ window.open(fileUrl, "_blank");
                   if (itemId){
                     
                     const item = await this._getItemDataFromList(itemId);
-                    console.log(item);
+                    
 
                     const _CommitteeMemberDTO = JSON.parse(item?.CommitteeMeetingMembersDTO);
-                    console.log(_CommitteeMemberDTO)
+                  
 
 
                    const committeMemberDTO =  _CommitteeMemberDTO.filter(
@@ -1567,7 +1600,7 @@ window.open(fileUrl, "_blank");
                 if (itemId){
                   
                   const item = await this._getItemDataFromList(itemId);
-                  console.log(item);
+                  
 
                   if (item?.StatusNumber !== '6000'){
 
@@ -1842,7 +1875,7 @@ window.open(fileUrl, "_blank");
                     <Modal
                                       isOpen={this.state.hideParellelActionAlertDialog}
                                       onDismiss={() => {
-                                        console.log("close triggered");
+                                       
 
                                         this.setState((prevState) => ({
                                           hideParellelActionAlertDialog: !prevState.hideParellelActionAlertDialog,
@@ -1861,7 +1894,7 @@ window.open(fileUrl, "_blank");
                                         <IconButton
                                           iconProps={{ iconName: "Cancel" }}
                                           onClick={() => {
-                                            console.log("close triggered");
+                                         
                                             window.location.reload();
                                             this.setState({ hideParellelActionAlertDialog: false });
                                           }}

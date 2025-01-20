@@ -3,7 +3,7 @@
   "solution": {
     "name": "xen-wp-committee-meetings-forms-client-side-solution",
     "id": "e381c7eb-5f99-4aa6-bf6e-df484a53e117",
-    "version": "1.0.0.6",
+    "version": "1.0.0.7",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -30,7 +30,7 @@
         "title": "xen-wp-committee-meetings-forms Feature",
         "description": "The feature that activates elements of the xen-wp-committee-meetings-forms solution.",
         "id": "9602cb19-cdd9-4b16-a7e8-cf7dda8fc655",
-        "version": "1.0.0.6"
+        "version": "1.0.0.7"
       }
     ]
   },

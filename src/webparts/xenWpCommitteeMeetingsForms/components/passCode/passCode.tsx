@@ -112,7 +112,7 @@ export default class PasscodeModal extends React.Component<
   };
 
   private onPasscodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState({ passcode: event.target.value });
+    this.setState({ passcode: event.target.value, errorMessage:'' });
   };
 
 

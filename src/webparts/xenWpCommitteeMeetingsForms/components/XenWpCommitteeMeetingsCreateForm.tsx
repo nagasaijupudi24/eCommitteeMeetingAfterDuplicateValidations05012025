@@ -41,7 +41,10 @@ import {
 } from "@pnp/spfx-controls-react/lib/PeoplePicker";
 
 import { RichText } from "@pnp/spfx-controls-react/lib/RichText";
-import { decode, encode } from 'he';
+import * as he from 'he';
+// import DOMPurify from "dompurify";
+// import { decode, encode } from 'he';
+// import { encode, decode } from "html-entities";
 import "@pnp/sp/site-users/web";
 import "@pnp/sp/fields";
 import "@pnp/sp/webs";
@@ -260,7 +263,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
       isLoading: true,
       _IsAuthor:false,
 
-      isSmallScreen: window.innerWidth < 568,
+      isSmallScreen: window.innerWidth < 768,
 
       hideParellelActionAlertDialog:false,
       parellelActionAlertMsg:''
@@ -283,7 +286,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     this.getfield();
     this._fetchDepartmentAlias();
 
-
+    window.addEventListener("resize", this.handleResize);
     
     this._itemId && this._getItemData(this._itemId);
     
@@ -297,11 +300,12 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     }, 3000);
   }
 
-  public componentWillUnmount() {
-    window.removeEventListener("resize", this.handleResize);
-  }
+  // public componentWillUnmount() {
+  //   window.removeEventListener("resize", this.handleResize);
+  // }
 
   private handleResize = () => {
+    console.log(window.innerWidth < 768,"is Small Screen")
     this.setState({ isSmallScreen: window.innerWidth < 768 });
   };
 
@@ -324,7 +328,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
         .filter(
           filterQury
         )();
-        console.log(fieldDetails,"Note Request Details")
+       
 
       const dropDownDataListing = fieldDetails
         .filter((each: any) => {
@@ -482,17 +486,31 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     )
     .expand("Chairman", "CurrentApprover")();
 
-    console.log(item)
+   
 
     return item
 
   }
 
+
+  // private escapeHtml = (input: string): string => {
+  //   return input.replace(/<p>(.*?)<\/p>/g, (match, content) => {
+  //     const div = document.createElement('div');
+  //     div.innerText = content; // Escape only the content within the <p> tags
+  //     return `<p>${div.innerHTML}</p>`; // Return the <p> tags with escaped content
+  //   });
+  // };
+
+
+  // private _getEncodedCommitteeMeetingNoteDTO = (input:any)=>{
+  //   return input.map((each:any)=>({...each,mom:this.escapeHtml(each.mom)}))
+  // }
+
   private _getItemData = async (id: any) => {
     const item: any = await this._getItemDataFromList(id)
     const _chairmanProfile = await this.props.sp.web.getUserById(item.ChairmanId)();
     const _chairmanDesignation = await this._getUserProperties( _chairmanProfile?.LoginName);
-    console.log(_chairmanDesignation)
+    
 
     this.setState({
       _IsAuthor:item.AuthorId ===  (await this.props.sp?.web.currentUser())?.Id,
@@ -529,7 +547,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     try {
       
       
-      console.log(this._committeNameList,"Committee List name")
+     
 
       //  const convernorDetails = await this.props.sp.web.lists
       // .getByTitle(this._committeNameList)
@@ -552,10 +570,10 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
        
       )
       .expand("Chairman")();
-      console.log(convernorDetails)
+     
 
       const isConvernorExists = convernorDetails.length > 0
-      console.log(isConvernorExists)
+     
 
       if (isConvernorExists){
 
@@ -878,7 +896,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                 dialogType: "mom",
                 isModalMOMOpen: true,
                 selectedMOMNoteRecord: item.key,
-                draftResolutionFieldValue: item.mom,
+                draftResolutionFieldValue: item.meetingMinutesForRichTextComponent,
               });
             }}
           />
@@ -1317,7 +1335,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     });
 
     const _chairmanIncluded = {
-      createdDate: new Date(),
+      createdDate:this._formatDateTime(new Date()) ,
       userId: 0,
       srNo:this.state.charimanData.EMail.split("@")[0],
       designation:this.state.charimanData.designation,
@@ -1330,7 +1348,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     }
 
     makeCommitteeMeetingMemberDTO.push(_chairmanIncluded)
-    console.log(makeCommitteeMeetingMemberDTO)
+  
 
     return JSON.stringify(makeCommitteeMeetingMemberDTO);
   };
@@ -1542,9 +1560,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     
     const itemFromList = await this._getItemDataFromList(this._itemId);
 
-    const _CommitteeMemberDTO = JSON.parse(itemFromList?.CommitteeMeetingMembersDTO).filter(
-      (each:any)=>each.isChairman === false
-    );
+    // const _CommitteeMemberDTO = JSON.parse(itemFromList?.CommitteeMeetingMembersDTO).filter(
+    //   (each:any)=>each.isChairman === false
+    // );
     const auditTrail = JSON.parse(itemFromList?.AuditTrail);
 
 
@@ -1554,6 +1572,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
       actionDate: this. _formatDateTime(new Date()),
     });
 
+    // const encodeMOMDTO = this._encodeMOMDTO(this.state.selectedCommitteeNoteRecords)
+    // console.log(encodeMOMDTO,"encode MOM DTO")
+
     await this.props.sp.web.lists
       .getByTitle(this._listName)
       .items.getById(this._itemId)
@@ -1562,7 +1583,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     
         
         CommitteeMeetingMembersDTO: this._getCommitteeMeetingMembersDTO(
-          _CommitteeMemberDTO
+          this.state.committeeMembersData
         ),
         CommitteeMeetingNoteDTO: JSON.stringify(
           this.state.committeeNoteRecordsData
@@ -1646,9 +1667,81 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     });
   };
 
+
+  // private decodeAndSanitize=(encodedString: any): any=> {
+  // //   const parser = new DOMParser();
+  // // const doc = parser.parseFromString(encodedString, "text/html");
+
+  // // // Extract the inner HTML, which will decode the entities
+  // // return doc.body.innerHTML;
+
+  // const entityMap: { [key: string]: string } = {
+  //   "&amp;": "&",
+  //   "&lt;": "<",
+  //   "&gt;": ">",
+  //   "&quot;": '"',
+  //   "&#39;": "'",
+  //   "&apos;": "'",
+  //   "&nbsp;": " ",
+  //   "&cent;": "¢",
+  //   "&pound;": "£",
+  //   "&yen;": "¥",
+  //   "&euro;": "€",
+  //   "&sect;": "§",
+  //   "&copy;": "©",
+  //   "&reg;": "®",
+  //   "&trade;": "™",
+  //   "&deg;": "°",
+  //   "&plusmn;": "±",
+  //   "&para;": "¶",
+  //   "&middot;": "·",
+  //   "&ndash;": "–",
+  //   "&mdash;": "—",
+  //   "&hellip;": "…",
+  //   "&laquo;": "«",
+  //   "&raquo;": "»",
+  //   "&lsquo;": "‘",
+  //   "&rsquo;": "’",
+  //   "&ldquo;": "“",
+  //   "&rdquo;": "”",
+  //   "&bull;": "•",
+  //   "&divide;": "÷",
+  //   "&times;": "×",
+  //   "&sup2;": "²",
+  //   "&sup3;": "³",
+  //   "&frac12;": "½",
+  //   "&frac14;": "¼",
+  //   "&frac34;": "¾",
+  //   "&#8203;": "",
+  // };
+
+  // // Replace all the entities with their corresponding characters
+  // return encodedString.replace(/&[a-zA-Z0-9#]+;/g, (entity: any) => entityMap[entity] || entity);
+  // }
+
+  // private _encodeMOMDTO =(data:any):any=>{
+  //   const encodeMOMDTO = this.state.committeeNoteRecordsData.map(
+  //     (each:any)=>{
+
+  //       const decodedHtml = he.decode(each.mom)
+  //       console.log(decodedHtml)
+
+  //       return {...each,mom:decodedHtml}
+  //     }
+
+      
+  //   )
+  //   console.log(encodeMOMDTO,"encode MOM DTO")
+  //   return encodeMOMDTO
+
+  // }
+
   private _handleMOMPublished = async (): Promise<void> => {
     this.setState({ isModalOpen: false, isLoading: true });
     const auditTrail = this.state.auditTrail || [];
+
+    
+    
 
     auditTrail.push({
       action: `Meeting MOM Published`,
@@ -1974,15 +2067,24 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   };
 
   private _onRichTextChangeForMom = (newText: string) => {
+   
 
-    const encodedValue = encode(newText, { allowUnsafeSymbols: true });
-    console.log(encodedValue, " ,encodedValue (Encoded for safe storage)");
+   
+    // console.log(newText," ,newText")
 
-    const decodedValue  = decode(newText);
-    console.log(decodedValue," ,encodedValue")
-    console.log(newText," ,newText")
+    // const parser = new DOMParser();
+    //   const doc = parser.parseFromString(newText, 'text/html');
+    //   const plainText = doc.body.textContent || "";
+    //   console.log(plainText,"")
+
+    //   let encoded = encodeURIComponent(newText);
+    //   console.log(encoded, "encoded..........")
+    //   let decoded = decodeURIComponent(encoded);
+    //   console.log(decoded,"decode .............")
+    // const decodedHtml = he.decode(newText)
+    // console.log(decodedHtml)
  
-    this.setState({ draftResolutionFieldValue: decodedValue });
+    this.setState({ draftResolutionFieldValue: newText });
     return newText;
   };
 
@@ -2367,8 +2469,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
   };
 
   public render(): React.ReactElement<IXenWpCommitteeMeetingsFormsProps> {
-    console.log(this.state)
-    
+  console.log(window.innerWidth)
+
+    console.log(this.state.isSmallScreen)
     return (
       <div>
         <div className={styles.titleContainer}>
@@ -2671,9 +2774,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                       }
                       this.handleOnAdd(e, "committeeMembers");
                     }}
-                    iconProps={{ iconName: "Add" }}
+                   
                   >
-                    Add
+                    + Add
                   </DefaultButton>
                 </div>
                 <span className={`${styles.spanForPeoplePicker}`}>
@@ -2766,9 +2869,9 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
                       this.handleOnAdd(e, "committeeGuestMembers");
                     }}
-                    iconProps={{ iconName: "Add" }}
+                    
                   >
-                    Add
+                    + Add
                   </DefaultButton>
                 </div>
                 <span className={`${styles.spanForPeoplePicker}`}>
@@ -2842,7 +2945,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                     type="button"
                     className={`${styles.responsiveButton}`}
                     // onClick={(e) => this.handleOnAdd(e, "committeeNoteRecords")}
-                    iconProps={{ iconName: "Add" }}
+                    
                     onClick={() => {
                       if (this.state.committeeNoteRecordSelectedValue === "") {
                         this.setState({
@@ -2856,7 +2959,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                       this.setState({ committeeNoteRecordSelectedValue: "" });
                     }}
                   >
-                    Add
+                    + Add
                   </DefaultButton>
                 </div>
               </div>
@@ -2999,8 +3102,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
                   if (this._itemId){
                     const item = await this._getItemDataFromList(this._itemId);
-                    console.log(item);
-
+                    
                     const StatusNumber = item?.StatusNumber;
                     const status = item?.MeetingStatus.toLowerCase()
 
@@ -3061,7 +3163,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
                 if (this._itemId){
                   const item = await this._getItemDataFromList(this._itemId);
-                  console.log(item);
+          
 
                   const StatusNumber = item?.StatusNumber;
                   const status = item?.MeetingStatus.toLowerCase()
@@ -3137,7 +3239,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
                 if (this._itemId){
                   const item = await this._getItemDataFromList(this._itemId);
-                  console.log(item);
+                 
 
                   const StatusNumber = item?.StatusNumber;
                   const status = item?.MeetingStatus.toLowerCase()
@@ -3198,7 +3300,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
 
                   if (this._itemId){
                     const item = await this._getItemDataFromList(this._itemId);
-                    console.log(item);
+                 
   
                     const StatusNumber = item?.StatusNumber;
                     const status = item?.MeetingStatus.toLowerCase()
@@ -3301,35 +3403,46 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
               <div
               //  className={` ${styles.richTextContainer}`}
               >
-                <RichText
+
+                {this.state.isSmallScreen?<RichText
+                key={this.state.isSmallScreen ? "smallScreen" : "largeScreen"}
                   value={this.state.draftResolutionFieldValue}
                   styleOptions={
-                    this.state.isSmallScreen
-                      ? {
+                     {
                           showBold: true,
                           showItalic: true,
                           showUnderline: true,
                           showList: true,
                           showMore: true,
                         }
-                      : {
-                          showBold: true,
-
-                          showItalic: true,
-                          showUnderline: true,
-                          showList: true,
-                          showAlign: true,
-                          showImage: true,
-                          showLink: true,
-                          showStyles: true,
-
-                          showMore: true,
-                        }
+                      
                   }
                   onChange={(text: string) =>
                     this._onRichTextChangeForMom(text)
                   }
-                />
+                />:<RichText
+                key={this.state.isSmallScreen ? "smallScreen" : "largeScreen"}
+                  value={this.state.draftResolutionFieldValue}
+                  styleOptions={
+                    {
+                      showBold: true,
+
+                      showItalic: true,
+                      showUnderline: true,
+                      showList: true,
+                      showAlign: true,
+                      showImage: true,
+                      showLink: true,
+                      showStyles: true,
+
+                      showMore: true,
+                    }
+                  }
+                  onChange={(text: string) =>
+                    this._onRichTextChangeForMom(text)
+                  }
+                />}
+               
               </div>
             </div>
             <div className={this.stylesMOMModal.footer}>
@@ -3343,9 +3456,13 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                     const updatedData = prevState.committeeNoteRecordsData.map(
                       (each: any) => {
                         if (each.key === this.state.selectedMOMNoteRecord) {
+
+                          const decodedHtml = he.decode(this.state.draftResolutionFieldValue)
+                         
                           return {
                             ...each,
-                            mom: this.state.draftResolutionFieldValue,
+                            mom: decodedHtml,
+                            meetingMinutesForRichTextComponent:this.state.draftResolutionFieldValue
                           };
                         }
                         return each;
@@ -3372,7 +3489,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
         <Modal
                           isOpen={this.state.hideParellelActionAlertDialog}
                           onDismiss={() => {
-                            console.log("close triggered");
+                            
                             window.location.reload();
                             this.setState((prevState)=>({
                               hideParellelActionAlertDialog:
@@ -3390,7 +3507,7 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
                             <IconButton
                               iconProps={{ iconName: "Cancel" }}
                               onClick={() => {
-                                console.log("close triggered");
+                               
                                 window.location.reload();
                                 this.setState({ hideParellelActionAlertDialog: false });
                               }}
@@ -3446,3 +3563,4 @@ export default class XenWpCommitteeMeetingsCreateForm extends React.Component<
     );
   }
 }
+
